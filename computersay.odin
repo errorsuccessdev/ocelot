@@ -15,9 +15,9 @@ Coords :: struct
 
 main :: proc()
 {
-    init()
+    ncInit()
     computerWindow: ^nc.Window
-    defer end(computerWindow) // Odin is based
+    defer ncEnd(computerWindow) // Odin is awesome
     computerArtData, ok := os.read_entire_file(COMPUTER_ART_PATH)
     if (!ok)
     {
@@ -26,14 +26,13 @@ main :: proc()
     }
     printString(string(computerArtData))
 
-    windowCoords: Coords = { 12, 39, 4, 17 }
-    windowEndX : c.int = 38
-    windowEndY : c.int = 11
-    computerWindow = initWindow(windowCoords)
+    windowCoords: Coords : { 12, 39, 4, 17 }
+    windowEndX : c.int : 38
+    windowEndY : c.int : 11
+    computerWindow = ncInitWindow(windowCoords)
 
     userChar := nc.wgetch(computerWindow)
-    lineEndings: [dynamic]c.int
-    defer delete(lineEndings)
+    lineEndings: [windowEndY]c.int
     for userChar != '\e'
     {
         y, x := nc.getyx(computerWindow)
@@ -41,14 +40,14 @@ main :: proc()
         // Save newline or word wrap previous X position
         if (userChar == '\n' &&  y != windowEndY) || x == windowEndX
         {
-            append(&lineEndings, x)
+            lineEndings[y] = x
         }
 
         // General character handling
         if userChar == 127 // Backspace
         {
             handleBackspace(computerWindow,
-                            y, x, &lineEndings)
+                            y, x, lineEndings[:])
         }
         else if !(x == windowEndX && y == windowEndY)
         {
@@ -60,7 +59,7 @@ main :: proc()
 
 handleBackspace :: proc(window: ^nc.Window,
                         y, x: c.int,
-                        lineEndings: ^[dynamic]c.int)
+                        lineEndings: []c.int)
 {
     // We can't backspace if we're already at the beginning
     if x == 0 && y == 0 do return
@@ -69,9 +68,7 @@ handleBackspace :: proc(window: ^nc.Window,
     // move back to our last position on the previous line
     if (x == 0)
     {
-        newX: c.int
-        if len(lineEndings) > 0 do newX = pop(lineEndings)
-        nc.wmove(window, y - 1, newX)
+        nc.wmove(window, y - 1, lineEndings[y - 1])
     }
     else // Otherwise, move one back on the current line
     {
@@ -81,7 +78,7 @@ handleBackspace :: proc(window: ^nc.Window,
     nc.wrefresh(window)
 }
 
-initWindow :: proc(coords: Coords) -> ^nc.Window
+ncInitWindow :: proc(coords: Coords) -> ^nc.Window
 {
     // newwin :: proc(h, w, y, x: c.int) -> ^Window
     window := nc.newwin(
@@ -103,7 +100,7 @@ printString :: proc(s: string)
     nc.refresh()
 }
 
-init :: proc()
+ncInit :: proc()
 {
     nc.initscr()
     nc.noecho()
@@ -111,7 +108,7 @@ init :: proc()
     nc.keypad(nc.stdscr, true)
 }
 
-end :: proc(window: ^nc.Window)
+ncEnd :: proc(window: ^nc.Window)
 {
     if (window != nil) do nc.delwin(window)
     nc.endwin()
