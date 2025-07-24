@@ -1,4 +1,4 @@
-package computersay
+package ocelot
 
 import nc "ncurses"
 import "core:fmt"
